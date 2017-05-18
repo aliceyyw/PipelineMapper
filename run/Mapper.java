@@ -1,5 +1,7 @@
 package run;
 import model.*;
+
+import javax.net.ssl.SSLContext;
 import java.io.*;
 import java.util.*;
 /**
@@ -12,8 +14,9 @@ public class Mapper {
     public int C;  // number of NIC
     public int T;  // number of Pipelines
     public int N = 4;  //number of NUMA sockets;
-    public int[] pcpu; // phycical cores of each socket
-    public int[] numaplace; // socket id of all elements
+    public int[] pcpu = null; // phycical cores of each socket
+    public int[] numaplace = null; // socket id of all elements
+    public int[][] numaDistance; // N x N matrix to record the distance among NUMA nodes
 
     public  int[] alias;  // if < 0 -> nic if > 0 pipeline
     public FowardGraph graph;
@@ -59,11 +62,16 @@ public class Mapper {
             BufferedReader reader = new BufferedReader(new FileReader(file));
             N = Integer.parseInt(reader.readLine());
             pcpu = new int[N];
+            numaDistance = new int[N][N];
             for(int i=0;i<N;i++)
                 pcpu[i] = Integer.parseInt(reader.readLine());
             int nic = Integer.parseInt(reader.readLine());
-            for(int j=0;j<nic;j++){
+            for(int j=0;j<nic;j++)
                 numaplace[j] = Integer.parseInt(reader.readLine());
+            for(int k=0;k<N;k++){
+                String[] dis = reader.readLine().split(" ");
+                for(int i=0;i<N;i++)
+                    numaDistance[k][i] = Integer.parseInt(dis[i]);
             }
 
 
@@ -79,14 +87,25 @@ public class Mapper {
         System.out.println("total "+C+" NICs");
         for(int j=0;j<C;j++)
             System.out.println("NIC"+(j+1)+" on socket "+numaplace[j]);
+        System.out.println("Node Distances:");
+        System.out.print("node  ");
+        for(int i=0;i<N;i++) System.out.print(i+"   ");
+        System.out.println();
+        for(int j=0;j<N;j++){
+            System.out.print("  "+j+":  ");
+            for(int k=0;k<N;k++)
+                System.out.print(numaDistance[j][k]+"  ");
+            System.out.println();
+        }
     }
 
     public static void main(String[] args){
         Mapper mapper = new Mapper();
         mapper.readPipeline();
+        mapper.readHardware();
         //mapper.graph.printInformation(mapper.alias);
-        mapper.graph.printInformation();
-
+        //mapper.graph.printInformation();
+        mapper.printHW();
         FowardGraph g = new FowardGraph(5,4); //v = 5 = nic + pipelines
         g.addEdge(0,1);
         g.addEdge(1,2);
